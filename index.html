@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Safety Monitor - Abdullah Al Fahim</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <style>
+        :root { --danger: #ff4d4d; --warning: #ffcc00; --safe: #00ff88; --bg: #020617; --card: #0f172a; --accent: #3b82f6; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; outline: none; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', Roboto, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        #map { flex: 1; width: 100%; z-index: 1; filter: contrast(1.1) brightness(0.9); }
+        
+        .panel { 
+            flex: 1.4; background: #0b0f1a; border-radius: 28px 28px 0 0; 
+            margin-top: -30px; z-index: 10; padding: 20px; 
+            box-shadow: 0 -15px 50px rgba(0,0,0,0.9); overflow-y: auto; 
+            border-top: 1px solid #1e293b;
+        }
+
+        .refresh-loader { height: 3px; background: var(--accent); position: absolute; top: 0; left: 0; transition: width 1s linear; box-shadow: 0 0 10px var(--accent); }
+        .dev-tag { font-size: 10px; color: #64748b; text-align: center; margin-bottom: 12px; letter-spacing: 2px; }
+        .dev-tag b { color: var(--accent); text-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+
+        .ui-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(30, 41, 59, 0.4); padding: 12px; border-radius: 18px; border: 1px solid #1e293b; }
+        .count-down { font-size: 11px; font-weight: 900; color: var(--accent); letter-spacing: 1px; }
+
+        .card { 
+            background: var(--card); padding: 18px; border-radius: 20px; 
+            border-left: 6px solid #1e293b; display: flex; align-items: center; 
+            gap: 15px; margin-bottom: 12px; border: 1px solid #1e293b;
+            transition: 0.3s;
+        }
+        .mag-circle { 
+            min-width: 58px; height: 58px; border-radius: 16px; 
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; font-weight: 900; background: #1e293b;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .btn-ready { 
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; 
+            border: none; padding: 16px; width: 100%; border-radius: 16px; 
+            font-weight: 800; margin-bottom: 18px; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        }
+        
+        .emergency-active { animation: emergency-bg 0.5s infinite; }
+        @keyframes emergency-bg { 0%, 100% { background: #0b0f1a; } 50% { background: #450a0a; } }
+        .panel::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body id="mainBody">
+
+<div id="map"></div>
+
+<div class="panel" id="mainPanel">
+    <div style="position: relative; width: 100%;"><div id="progress" class="refresh-loader"></div></div>
+    <div class="dev-tag">ENGINEERED BY <b>ABDULLAH AL FAHIM</b></div>
+    
+    <div class="ui-top">
+        <div style="font-size: 11px; display: flex; align-items: center; gap: 6px;">
+            <span style="height:8px; width:8px; background:var(--safe); border-radius:50%; display:inline-block; box-shadow:0 0 8px var(--safe)"></span>
+            RADAR ACTIVE
+        </div>
+        <div class="count-down">RESCAN: <span id="counter">10</span>S</div>
+    </div>
+
+    <button id="setupBtn" onclick="activateEmergencySystem()" class="btn-ready">🚀 ACTIVATE ALL SENSORS</button>
+    
+    <div id="eq-list"></div>
+</div>
+
+<audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" loop></audio>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map', { zoomControl: false }).setView([23.8, 90.3], 6);
+    let layerGroup = L.layerGroup().addTo(map);
+    let timeLeft = 10;
+    let systemReady = false;
+    let lastId = null;
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    async function activateEmergencySystem() {
+        const res = await Notification.requestPermission();
+        // Unlock Camera for Flashlight
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            stream.getTracks().forEach(track => track.stop());
+        } catch(e) { console.log("Flashlight permission required"); }
+
+        if(res === 'granted') {
+            systemReady = true;
+            document.getElementById('setupBtn').style.display = 'none';
+            document.getElementById('alarm').play().then(() => document.getElementById('alarm').pause());
+        }
+    }
+
+    async function triggerFlashlight(seconds) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const track = stream.getVideoTracks()[0];
+            const imageCapture = new ImageCapture(track);
+            const photoCapabilities = await imageCapture.getPhotoCapabilities();
+            
+            if (photoCapabilities.fillLightMode.includes('flash')) {
+                let flashOn = true;
+                const interval = setInterval(() => {
+                    track.applyConstraints({ advanced: [{ torch: flashOn }] });
+                    flashOn = !flashOn;
+                }, 200);
+
+                setTimeout(() => {
+                    clearInterval(interval);
+                    track.stop();
+                }, seconds * 1000);
+            }
+        } catch (e) { console.log("Flashlight not supported on this device/browser."); }
+    }
+
+    function getRadius(mag) {
+        const base = Math.pow(10, (0.5 * mag - 1.25)) * 14; 
+        return { r: base * 1000, y: base * 2.8 * 1000, g: base * 6 * 1000 };
+    }
+
+    async function update() {
+        try {
+            const response = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
+            const data = await response.json();
+            const list = document.getElementById("eq-list");
+            list.innerHTML = "";
+            layerGroup.clearLayers();
+
+            const local = data.features.filter(f => {
+                const [ln, lt] = f.geometry.coordinates;
+                return lt >= 18.0 && lt <= 29.5 && ln >= 86.0 && ln <= 95.5;
+            }).sort((a,b) => b.properties.time - a.properties.time);
+
+            local.forEach((eq, i) => {
+                const [lon, lat] = eq.geometry.coordinates;
+                const { mag, place, time, ids } = eq.properties;
+                const zones = getRadius(mag);
+                const color = mag >= 5 ? 'var(--danger)' : 'var(--warning)';
+
+                // Emergency Alert Check
+                if (i === 0 && lastId !== ids && systemReady) {
+                    if (lastId !== null && mag >= 4.0) {
+                        navigator.vibrate([1000, 500, 1000, 500, 1000]);
+                        new Notification("⚠ EMERGENCY: EARTHQUAKE!", { body: `${mag} Magnitude near ${place}` });
+                        if (mag >= 5.0) {
+                            document.getElementById('alarm').play();
+                            triggerFlashlight(10);
+                            document.getElementById('mainPanel').classList.add('emergency-active');
+                            setTimeout(() => {
+                                document.getElementById('alarm').pause();
+                                document.getElementById('mainPanel').classList.remove('emergency-active');
+                            }, 10000);
+                        }
+                    }
+                    lastId = ids;
+                }
+
+                L.circle([lat, lon], { radius: zones.g, color: '#00ff88', weight: 1, fillOpacity: 0.03 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.y, color: '#ffcc00', weight: 1, fillOpacity: 0.07 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.r, color: '#ff4d4d', weight: 1.5, fillOpacity: 0.15 }).addTo(layerGroup);
+                L.circleMarker([lat, lon], { radius: 6, color: '#fff', fillColor: '#ff4d4d', fillOpacity: 1, weight: 2 }).addTo(layerGroup);
+
+                list.innerHTML += `
+                    <div class="card" onclick="map.flyTo([${lat}, ${lon}], 8)" style="border-left-color: ${color}">
+                        <div class="mag-circle" style="color: ${color}"><span style="font-size:10px; opacity:0.6">M</span>${mag}</div>
+                        <div style="flex:1">
+                            <div style="font-weight:bold; font-size:14px; color:#f8fafc;">${place}</div>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px;">${new Date(time).toLocaleTimeString('bn-BD')}</div>
+                            <div style="font-size:10px; margin-top:6px; font-weight:bold; color:${color}">Zone: ${Math.round(zones.r/1000)}km Damage Range</div>
+                        </div>
+                    </div>`;
+            });
+        } catch (e) { console.error("Sync Error"); }
+    }
+
+    setInterval(() => {
+        timeLeft--;
+        if (timeLeft < 0) { timeLeft = 10; update(); }
+        document.getElementById('counter').innerText = timeLeft;
+        document.getElementById('progress').style.width = (timeLeft * 10) + "%";
+    }, 1000);
+
+    update();
+</script>
+</body>
+</html>
