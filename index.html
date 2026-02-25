@@ -3,134 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smart Safety Monitor - Abdullah Al Fahim</title>
+    <title>Precision Safety Monitor - Abdullah Al Fahim</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         :root { 
-            --danger: #ef4444; --warning: #f59e0b; --safe: #22c55e; --accent: #2563eb;
-            --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0;
+            --danger: #ef4444; --warning: #f59e0b; --safe: #10b981; --accent: #2563eb;
+            --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; --neon: #2563eb;
         }
-        /* Dark Mode Colors */
         .dark-theme { 
-            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --border: #334155;
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --border: #334155; --neon: #3b82f6;
         }
 
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; transition: background 0.3s, color 0.3s; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; height: 100vh; overflow: hidden; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; height: 100vh; overflow: hidden; touch-action: none; }
         
-        #map { height: 100vh; width: 100%; z-index: 1; }
+        #map { height: 100vh; width: 100%; z-index: 1; position: absolute; top: 0; }
 
-        /* Theme Toggle Button */
         .theme-toggle {
             position: fixed; top: 20px; right: 20px; z-index: 2000;
             background: var(--card); border: 1px solid var(--border);
-            padding: 10px; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            padding: 12px; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer; font-size: 20px; width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* Bottom Sheet */
         .bottom-sheet { 
-            position: fixed; bottom: 0; left: 0; right: 0; height: 75vh;
-            background: var(--bg); border-radius: 25px 25px 0 0; z-index: 1000;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
-            transform: translateY(62vh);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: fixed; bottom: 0; left: 0; right: 0; height: 85vh;
+            background: var(--bg); border-radius: 30px 30px 0 0; z-index: 1000;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.3);
+            transform: translateY(72vh);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1);
             display: flex; flex-direction: column; border-top: 1px solid var(--border);
         }
-        .bottom-sheet.open { transform: translateY(25vh); }
         
-        .drag-handle { width: 100%; padding: 15px; display: flex; justify-content: center; cursor: pointer; }
-        .handle-bar { width: 40px; height: 5px; background: #cbd5e1; border-radius: 10px; }
+        .drag-handle { width: 100%; padding: 25px 0 15px; display: flex; justify-content: center; cursor: grab; touch-action: none; }
+        .handle-bar { width: 50px; height: 6px; background: #cbd5e1; border-radius: 10px; }
 
         .content { padding: 0 20px 20px; overflow-y: auto; flex: 1; }
-        .dev-tag { font-size: 10px; color: #64748b; text-align: center; margin-bottom: 10px; letter-spacing: 1px; }
+        .dev-tag { font-size: 11px; color: #64748b; text-align: center; margin-bottom: 15px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; }
         .dev-tag b { color: var(--accent); }
 
-        .ui-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 12px; border-radius: 15px; border: 1px solid var(--border); margin-bottom: 15px; }
-        .timer { font-size: 12px; font-weight: bold; color: var(--accent); }
+        .ui-header { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 20px; border: 1px solid var(--border); margin-bottom: 15px; }
+        .neon-timer { font-size: 13px; font-weight: 800; color: var(--neon); text-shadow: 0 0 10px var(--neon); }
 
-        .card { 
-            background: var(--card); padding: 15px; border-radius: 18px; 
-            display: flex; align-items: center; gap: 15px; margin-bottom: 12px; 
-            border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .mag-badge { 
-            min-width: 50px; height: 50px; border-radius: 12px; 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; font-weight: 900; background: rgba(0,0,0,0.05);
-        }
+        .card { background: var(--card); padding: 18px; border-radius: 22px; display: flex; align-items: center; gap: 15px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .mag-badge { min-width: 55px; height: 55px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-weight: 900; background: rgba(0,0,0,0.05); font-size: 18px; }
 
-        .btn-ready { 
-            background: var(--accent); color: white; border: none; padding: 14px; 
-            width: 100%; border-radius: 12px; font-weight: bold; margin-bottom: 15px; cursor: pointer;
+        .zone-info { font-size: 10px; margin-top: 8px; font-weight: bold; display: flex; flex-wrap: wrap; gap: 6px; }
+        .zone-info span { padding: 3px 8px; border-radius: 6px; background: rgba(0,0,0,0.03); }
+
+        .btn-ready { background: var(--accent); color: white; border: none; padding: 16px; width: 100%; border-radius: 18px; font-weight: 800; margin-bottom: 15px; cursor: pointer; }
+
+        #alert-popup {
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            width: 90%; background: var(--card); border: 2px solid var(--danger);
+            border-radius: 20px; padding: 15px; z-index: 3000; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3); transition: 0.5s;
         }
+        #alert-popup.show { top: 25px; }
     </style>
 </head>
-<body>
+<body class="light-theme">
 
 <div id="map"></div>
+<div class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</div>
 
-<div class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌓</div>
+<div id="alert-popup">
+    <div style="font-size: 30px;">⚠️</div>
+    <div>
+        <div style="font-weight: 900; color: var(--danger); font-size: 16px;">NEW EARTHQUAKE!</div>
+        <div id="alert-msg" style="font-size: 13px;">Checking data...</div>
+    </div>
+</div>
 
 <div class="bottom-sheet" id="shutter">
-    <div class="drag-handle" onclick="toggleShutter()">
+    <div class="drag-handle" id="dragHandle">
         <div class="handle-bar"></div>
     </div>
     
     <div class="content">
-        <div class="dev-tag">DEVELOPED BY <b>ABDULLAH AL FAHIM</b></div>
+        <div class="dev-tag">ENGINEERED BY <b>ABDULLAH AL FAHIM</b></div>
         
         <div class="ui-header">
-            <div style="font-size: 12px; font-weight: bold;"><span style="color:var(--safe)">●</span> LIVE MONITOR</div>
-            <div class="timer">NEXT SCAN: <span id="counter">10</span>S</div>
+            <div style="font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
+                <span style="height:10px; width:10px; background:var(--safe); border-radius:50%; box-shadow: 0 0 10px var(--safe);"></span> LIVE RADAR
+            </div>
+            <div class="neon-timer">RESCAN: <span id="counter">10</span>S</div>
         </div>
 
-        <button id="setupBtn" onclick="activateSystem()" class="btn-ready">🚀 এলার্ট ও সেন্সর সক্রিয় করুন</button>
+        <button id="setupBtn" onclick="activateSystem()" class="btn-ready">🔔 ACTIVATE EMERGENCY ALERTS</button>
         <div id="eq-list"></div>
     </div>
 </div>
 
-<audio id="alarm" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" loop></audio>
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', { zoomControl: false }).setView([23.8, 90.3], 6);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.8, 90.3], 6);
     let layerGroup = L.layerGroup().addTo(map);
-    let timeLeft = 10;
-    let isDark = false;
+    let timeLeft = 10, isDark = false, lastId = null;
     let tileLayer;
 
-    // ম্যাপ থিম ফাংশন
-    function setMapTheme(dark) {
+    function applyMapTheme(dark) {
         if (tileLayer) map.removeLayer(tileLayer);
         const url = dark 
             ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
             : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         tileLayer = L.tileLayer(url).addTo(map);
     }
+    applyMapTheme(false);
 
     function toggleTheme() {
         isDark = !isDark;
-        document.body.classList.toggle('dark-theme');
-        setMapTheme(isDark);
+        document.body.className = isDark ? 'dark-theme' : 'light-theme';
         document.getElementById('themeBtn').innerText = isDark ? '☀️' : '🌙';
+        applyMapTheme(isDark);
     }
 
-    setMapTheme(false); // Initial Light Map
+    // --- Smooth Drag Logic ---
+    const shutter = document.getElementById('shutter');
+    const dragHandle = document.getElementById('dragHandle');
+    let startY, startPos;
 
-    function toggleShutter() {
-        document.getElementById('shutter').classList.toggle('open');
+    dragHandle.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+        const matrix = window.getComputedStyle(shutter).transform;
+        startPos = matrix !== 'none' ? parseInt(matrix.split(',')[5]) : 0;
+        shutter.style.transition = 'none';
+    });
+
+    dragHandle.addEventListener('touchmove', (e) => {
+        const deltaY = e.touches[0].clientY - startY;
+        let move = startPos + deltaY;
+        if (move > window.innerHeight * 0.72) move = window.innerHeight * 0.72;
+        if (move < window.innerHeight * 0.15) move = window.innerHeight * 0.15;
+        shutter.style.transform = `translateY(${move}px)`;
+    });
+
+    dragHandle.addEventListener('touchend', () => {
+        shutter.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1)';
+        const currentY = parseInt(window.getComputedStyle(shutter).transform.split(',')[5]);
+        shutter.style.transform = currentY < window.innerHeight * 0.4 ? 'translateY(15vh)' : 'translateY(72vh)';
+    });
+
+    // Precision Calculation for 3 Zones
+    function getRadius(mag) {
+        const base = Math.pow(10, (0.5 * mag - 1.25)) * 14; 
+        return { 
+            r: base * 1000,           // Danger (Red)
+            y: base * 2.8 * 1000,     // Warning (Yellow)
+            g: base * 6 * 1000        // Felt/Safe (Green)
+        };
     }
 
     async function activateSystem() {
-        if(await Notification.requestPermission() === 'granted') {
-            document.getElementById('setupBtn').style.display = 'none';
-        }
+        if(await Notification.requestPermission() === 'granted') document.getElementById('setupBtn').style.display = 'none';
     }
 
-    function getRadius(mag) {
-        const base = Math.pow(10, (0.5 * mag - 1.25)) * 14; 
-        return { r: base * 1000, y: base * 2.8 * 1000, g: base * 6 * 1000 };
+    function showPopup(msg) {
+        document.getElementById('alert-msg').innerText = msg;
+        const popup = document.getElementById('alert-popup');
+        popup.classList.add('show');
+        setTimeout(() => popup.classList.remove('show'), 6000);
     }
 
     async function update() {
@@ -146,28 +179,38 @@
                 return lt >= 17.0 && lt <= 30.0 && ln >= 85.0 && ln <= 96.0;
             }).sort((a,b) => b.properties.time - a.properties.time);
 
+            if (local.length > 0 && lastId !== local[0].properties.ids) {
+                if (lastId !== null) showPopup(`${local[0].properties.mag} Mag - ${local[0].properties.place}`);
+                lastId = local[0].properties.ids;
+            }
+
             local.forEach(eq => {
                 const [lon, lat] = eq.geometry.coordinates;
                 const { mag, place, time } = eq.properties;
                 const zones = getRadius(mag);
-                const color = mag >= 5 ? '#ef4444' : '#f59e0b';
-
-                L.circle([lat, lon], { radius: zones.g, color: '#22c55e', weight: 1, fillOpacity: 0.1 }).addTo(layerGroup);
-                L.circle([lat, lon], { radius: zones.y, color: '#eab308', weight: 1, fillOpacity: 0.15 }).addTo(layerGroup);
+                const color = mag >= 5 ? 'var(--danger)' : 'var(--warning)';
+                
+                // ম্যাপে ভিজ্যুয়াল ৩টি জোন (Red, Yellow, Green)
+                L.circle([lat, lon], { radius: zones.g, color: '#10b981', weight: 1, fillOpacity: 0.05 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.y, color: '#eab308', weight: 1, fillOpacity: 0.1 }).addTo(layerGroup);
                 L.circle([lat, lon], { radius: zones.r, color: '#ef4444', weight: 1.5, fillOpacity: 0.2 }).addTo(layerGroup);
-                L.circleMarker([lat, lon], { radius: 6, color: '#fff', fillColor: '#ef4444', fillOpacity: 1, weight: 2 }).addTo(layerGroup);
+                L.circleMarker([lat, lon], { radius: 8, color: '#fff', fillColor: '#ef4444', fillOpacity: 1, weight: 3 }).addTo(layerGroup);
 
                 list.innerHTML += `
-                    <div class="card" onclick="map.flyTo([${lat}, ${lon}], 8); toggleShutter()">
+                    <div class="card" onclick="map.flyTo([${lat}, ${lon}], 8); shutter.style.transform='translateY(72vh)'">
                         <div class="mag-badge" style="color: ${color}">${mag}</div>
                         <div style="flex:1">
-                            <div style="font-weight:bold; font-size:14px;">${place}</div>
+                            <div style="font-weight:bold; font-size:15px;">${place}</div>
                             <div style="font-size:11px; opacity:0.7;">${new Date(time).toLocaleTimeString('bn-BD')}</div>
-                            <div style="font-size:10px; margin-top:5px; font-weight:bold; color:${color}">Area: ${Math.round(zones.r/1000)}km Dangerous</div>
+                            <div class="zone-info">
+                                <span style="color:var(--danger)">🔴 বিপদ: ${Math.round(zones.r/1000)}km</span>
+                                <span style="color:var(--warning)">🟡 সতর্ক: ${Math.round(zones.y/1000)}km</span>
+                                <span style="color:var(--safe)">🟢 মৃদু: ${Math.round(zones.g/1000)}km</span>
+                            </div>
                         </div>
                     </div>`;
             });
-        } catch (e) { console.log("Fetch Error"); }
+        } catch (e) { console.log("Sync Error"); }
     }
 
     setInterval(() => {
