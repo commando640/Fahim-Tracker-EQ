@@ -3,217 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SENTRY X ULTRA - Abdullah Al Fahim</title>
+    <title>SENTRY INFINITY | Abdullah Al Fahim</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Plus+Jakarta+Sans:wght@300;500;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1; --danger: #ff4757; --warning: #ffa502; --safe: #2ed573;
-            --bg: #0f172a; --glass: rgba(30, 41, 59, 0.75); --border: rgba(255, 255, 255, 0.1);
-            --text: #f8fafc;
-        }
-        .light-theme {
-            --bg: #f1f5f9; --glass: rgba(255, 255, 255, 0.85); --border: rgba(0, 0, 0, 0.08);
-            --text: #1e293b;
+            --accent: #6366f1; --danger: #ff3366; --warning: #f7b731; --safe: #20bf6b;
+            --bg: #020617; --card: rgba(15, 23, 42, 0.8); --border: rgba(255, 255, 255, 0.08);
         }
 
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
-        body { margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; transition: 0.4s ease; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; overflow: hidden; }
+
+        #map { height: 100vh; width: 100%; position: absolute; z-index: 1; filter: contrast(1.1) brightness(0.8) saturate(1.2); }
+
+        /* Floating Top HUD */
+        .hud-top {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 92%;
+            z-index: 2000; padding: 12px 20px; border-radius: 20px;
+            backdrop-filter: blur(20px); background: var(--card);
+            border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+
+        .os-logo { font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 3px; color: var(--accent); }
         
-        #map { height: 100vh; width: 100%; position: absolute; z-index: 1; filter: saturate(1.1); }
+        /* Advanced Shutter Engine */
+        .shutter-panel {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 92vh;
+            background: linear-gradient(180deg, rgba(10, 15, 30, 0.98) 0%, #020617 100%);
+            backdrop-filter: blur(40px); border-radius: 40px 40px 0 0; z-index: 1500;
+            border-top: 1px solid var(--border); transform: translateY(80vh);
+            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        .shutter-panel.open { transform: translateY(10vh); }
 
-        .glass-panel { backdrop-filter: blur(20px) saturate(180%); background: var(--glass); border: 1px solid var(--border); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
+        .drag-zone { width: 100%; padding: 30px 0 15px; display: flex; flex-direction: column; align-items: center; cursor: grab; }
+        .drag-bar { width: 50px; height: 4px; background: var(--accent); border-radius: 10px; opacity: 0.3; }
 
-        .header-nav { position: fixed; top: 20px; left: 20px; right: 20px; z-index: 2000; padding: 12px 20px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .content-scroll { padding: 0 24px 100px; overflow-y: auto; height: 100%; scroll-behavior: smooth; }
 
-        .shutter { position: fixed; bottom: 0; left: 0; right: 0; height: 88vh; border-radius: 40px 40px 0 0; z-index: 1500; transform: translateY(75vh); transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
-        .drag-area { width: 100%; padding: 25px 0; display: flex; justify-content: center; cursor: grab; }
-        .handle { width: 45px; height: 5px; background: var(--primary); border-radius: 10px; opacity: 0.5; }
+        /* Precision Cards */
+        .event-card {
+            background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+            padding: 22px; border-radius: 28px; margin-bottom: 16px;
+            display: flex; gap: 18px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .event-card::after { content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: var(--accent); opacity: 0; transition: 0.3s; }
+        .event-card:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.06); }
+        .event-card:active::after { opacity: 1; }
 
-        .scroll-content { padding: 0 25px 40px; overflow-y: auto; height: calc(100% - 70px); }
+        .mag-orbit {
+            min-width: 68px; height: 68px; border-radius: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #000; border: 2.5px solid var(--accent);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+        .mag-val { font-family: 'Syncopate', sans-serif; font-size: 20px; font-weight: 700; }
+        .mag-unit { font-size: 8px; font-weight: 800; opacity: 0.6; margin-top: -2px; }
 
-        .brand-sec { text-align: center; margin-bottom: 25px; }
-        .brand-sec h1 { font-size: 20px; margin: 5px 0; font-weight: 900; background: linear-gradient(90deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        /* Danger Zone Badges */
+        .zone-pill { font-size: 10px; font-weight: 800; padding: 6px 12px; border-radius: 12px; background: rgba(0,0,0,0.3); display: flex; align-items: center; gap: 6px; }
 
-        .eq-card { padding: 20px; border-radius: 25px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); margin-bottom: 15px; display: flex; gap: 15px; }
-        .mag-view { min-width: 60px; height: 60px; border-radius: 18px; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; background: var(--bg); border: 2px solid var(--primary); color: var(--primary); }
+        /* Real-time Alert Notification */
+        .master-alert {
+            position: fixed; top: -150px; left: 50%; transform: translateX(-50%); width: 92%;
+            padding: 24px; border-radius: 30px; z-index: 3000;
+            background: rgba(255, 51, 102, 0.1); backdrop-filter: blur(20px);
+            border: 2px solid var(--danger); transition: 0.8s cubic-bezier(0.2, 1, 0.3, 1);
+            display: flex; align-items: center; gap: 20px;
+        }
+        .master-alert.active { top: 30px; box-shadow: 0 20px 60px rgba(255, 51, 102, 0.3); }
 
-        .zone-badge { font-size: 9px; font-weight: 900; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-top: 8px; margin-right: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        .identity { text-align: center; margin-bottom: 30px; }
+        .identity h3 { font-size: 9px; letter-spacing: 5px; opacity: 0.4; text-transform: uppercase; margin-bottom: 6px; }
+        .identity h2 { font-family: 'Syncopate', sans-serif; font-size: 18px; font-weight: 700; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
 
-        .alert-box { position: fixed; top: -150px; left: 50%; transform: translateX(-50%); width: 90%; padding: 22px; border-radius: 30px; z-index: 3000; transition: 0.6s cubic-bezier(0.68, -0.6, 0.32, 1.6); border: 2px solid var(--danger); }
-        .alert-box.active { top: 30px; }
+        .action-node { background: var(--accent); color: white; border: none; padding: 20px; border-radius: 24px; font-weight: 800; width: 100%; margin-bottom: 25px; cursor: pointer; letter-spacing: 1px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3); }
         
-        .neon-loader { position: absolute; top: 0; left: 0; height: 4px; background: var(--primary); box-shadow: 0 0 15px var(--primary); transition: width 1s linear; }
-
-        .critical-btn { width: 100%; padding: 18px; border-radius: 20px; background: var(--danger); color: white; border: none; font-weight: 900; cursor: pointer; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(255, 71, 87, 0.3); }
+        .sync-bar { position: absolute; top: 0; left: 0; height: 3px; background: var(--accent); width: 0%; transition: width 1s linear; }
     </style>
 </head>
-<body class="dark-theme">
+<body>
 
 <div id="map"></div>
 
-<div class="header-nav glass-panel">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="height:8px; width:8px; background:var(--safe); border-radius:50%; box-shadow: 0 0 10px var(--safe);"></span>
-        <span style="font-size: 11px; font-weight: 800; letter-spacing: 1px;">SENTRY LIVE</span>
-    </div>
-    <div style="display: flex; gap: 15px; align-items: center;">
-        <span id="timer-text" style="font-size: 13px; font-weight: 800; color: var(--primary);">10s</span>
-        <button onclick="toggleTheme()" style="background:none; border:none; font-size:18px; cursor:pointer;">🌓</button>
+<div class="hud-top">
+    <div class="os-logo">SENTRY INFINITY</div>
+    <div style="display:flex; align-items:center; gap:15px;">
+        <div id="timer" style="font-family:'Syncopate'; font-size:10px; color:var(--safe);">SYNC: 10S</div>
+        <div style="width:10px; height:10px; background:var(--safe); border-radius:50%; box-shadow:0 0 10px var(--safe); animation: pulse 2s infinite;"></div>
     </div>
 </div>
 
-<div class="alert-box glass-panel" id="main-alert">
-    <div style="font-size: 40px; animation: pulse 1s infinite;">🚨</div>
+<div class="master-alert" id="alert-pop">
+    <div style="font-size:45px;">🛑</div>
     <div>
-        <div style="font-weight: 900; color: var(--danger); font-size: 18px; letter-spacing: 1px;">CRITICAL ALERT</div>
-        <div id="alert-text" style="font-size: 13px; opacity: 0.9;">High magnitude activity detected!</div>
+        <div style="font-family:'Syncopate'; color:var(--danger); font-size:14px; font-weight:700;">SEISMIC BREACH</div>
+        <div id="alert-info" style="font-size:13px; opacity:0.8; margin-top:4px;">Threat level detected in proximal coordinates.</div>
     </div>
 </div>
 
-<div class="shutter glass-panel" id="shutter">
-    <div class="neon-loader" id="neon-bar"></div>
-    <div class="drag-area" id="drag-handle">
-        <div class="handle"></div>
+<div class="shutter-panel" id="sheet">
+    <div class="sync-bar" id="progress"></div>
+    <div class="drag-zone" id="handle">
+        <div class="drag-bar"></div>
     </div>
     
-    <div class="scroll-content">
-        <div class="brand-sec">
-            <h2 style="font-size: 9px; letter-spacing: 4px; opacity: 0.5; margin:0;">ENGINEERED BY</h2>
-            <h1>ABDULLAH AL FAHIM</h1>
+    <div class="content-scroll">
+        <div class="identity">
+            <h3>Architected By</h3>
+            <h2>ABDULLAH AL FAHIM</h2>
         </div>
 
-        <button onclick="enableAudio()" id="audio-btn" class="critical-btn">🔊 ACTIVATE AUDIO SURVEILLANCE</button>
+        <button onclick="unlockSystem()" id="boot" class="action-node">ENABLE SENSOR INTERFACE</button>
 
-        <div id="feed"></div>
+        <div id="live-stream"></div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    let isDark = true, timeLeft = 10, lastId = null, tile, audioEnabled = false;
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.8, 90.3], 6);
     let layerGroup = L.layerGroup().addTo(map);
+    let lastId = null, timeLeft = 10, isLive = false;
 
-    // Audio System
-    const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/emergency_it_is_an_emergency.ogg');
-    
-    function enableAudio() {
-        audioEnabled = true;
-        document.getElementById('audio-btn').style.display = 'none';
-        // Play silent sound to "unlock" audio on mobile
-        alertSound.play().then(() => alertSound.pause());
+    // Premium CartoDB Dark Matter
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    const siren = new Audio('https://actions.google.com/sounds/v1/alarms/emergency_it_is_an_emergency.ogg');
+
+    function unlockSystem() {
+        isLive = true;
+        document.getElementById('boot').style.display = 'none';
+        siren.play().then(() => siren.pause());
+        if(Notification.permission !== 'granted') Notification.requestPermission();
     }
 
-    function setMapStyle(dark) {
-        if (tile) map.removeLayer(tile);
-        tile = L.tileLayer(dark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    }
-    setMapStyle(true);
-
-    function toggleTheme() {
-        isDark = !isDark;
-        document.body.className = isDark ? 'dark-theme' : 'light-theme';
-        setMapStyle(isDark);
-    }
-
-    // --- Drag Logic ---
-    const sheet = document.getElementById('shutter');
-    const handle = document.getElementById('drag-handle');
-    let startY, startT;
+    // --- High-Performance Shutter Logic ---
+    const sheet = document.getElementById('sheet');
+    const handle = document.getElementById('handle');
+    let startY, startPos;
 
     handle.addEventListener('touchstart', (e) => {
         startY = e.touches[0].clientY;
-        startT = parseInt(window.getComputedStyle(sheet).transform.split(',')[5]) || 0;
+        const style = window.getComputedStyle(sheet).transform;
+        startPos = style !== 'none' ? parseInt(style.split(',')[5]) : 0;
         sheet.style.transition = 'none';
     });
 
     handle.addEventListener('touchmove', (e) => {
         const delta = e.touches[0].clientY - startY;
-        let pos = startT + delta;
-        if (pos < window.innerHeight * 0.1) pos = window.innerHeight * 0.1;
-        sheet.style.transform = `translateY(${pos}px)`;
+        let y = startPos + delta;
+        if(y < window.innerHeight * 0.1) y = window.innerHeight * 0.1;
+        sheet.style.transform = `translateY(${y}px)`;
     });
 
     handle.addEventListener('touchend', () => {
-        sheet.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
-        const curr = parseInt(window.getComputedStyle(sheet).transform.split(',')[5]);
-        sheet.style.transform = curr < window.innerHeight * 0.45 ? 'translateY(12vh)' : 'translateY(75vh)';
+        sheet.style.transition = 'transform 0.7s cubic-bezier(0.19, 1, 0.22, 1)';
+        const curY = parseInt(window.getComputedStyle(sheet).transform.split(',')[5]);
+        sheet.style.transform = curY < window.innerHeight * 0.45 ? 'translateY(10vh)' : 'translateY(80vh)';
     });
 
-    function getRadii(mag) {
+    function calcImpact(mag) {
         const base = Math.pow(10, (0.5 * mag - 1.25)) * 14000;
         return { red: base, yellow: base * 2.8, green: base * 6 };
     }
 
-    function triggerAlert(mag, place) {
-        const al = document.getElementById('main-alert');
-        document.getElementById('alert-text').innerText = `${mag} Mag - ${place}`;
-        al.classList.add('active');
-        
-        if (audioEnabled) {
-            alertSound.currentTime = 0;
-            alertSound.play();
-        }
-        
-        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
-        setTimeout(() => al.classList.remove('active'), 8000);
+    function pushAlert(m, p) {
+        const pop = document.getElementById('alert-pop');
+        document.getElementById('alert-info').innerText = `${m} Magnitude • ${p}`;
+        pop.classList.add('active');
+        if(isLive && m >= 4.5) { siren.currentTime = 0; siren.play(); }
+        if(navigator.vibrate) navigator.vibrate([500, 100, 500]);
+        setTimeout(() => pop.classList.remove('active'), 8000);
     }
 
-    async function fetchData() {
+    async function syncData() {
         try {
-            const r = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
-            const d = await r.json();
-            const feed = document.getElementById('feed');
-            feed.innerHTML = ""; layerGroup.clearLayers();
+            const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
+            const data = await res.json();
+            const stream = document.getElementById('live-stream');
+            stream.innerHTML = ""; layerGroup.clearLayers();
 
-            const filtered = d.features.filter(f => {
+            const local = data.features.filter(f => {
                 const [ln, lt] = f.geometry.coordinates;
-                return lt > 16 && lt < 32 && ln > 84 && ln < 98;
+                return lt > 15 && lt < 35 && ln > 80 && ln < 100;
             }).sort((a,b) => b.properties.time - a.properties.time);
 
-            if (filtered.length > 0 && lastId !== filtered[0].id) {
-                if (lastId !== null && filtered[0].properties.mag >= 4.0) {
-                    triggerAlert(filtered[0].properties.mag, filtered[0].properties.place);
-                }
-                lastId = filtered[0].id;
+            if(local.length > 0 && lastId !== local[0].id) {
+                if(lastId) pushAlert(local[0].properties.mag, local[0].properties.place);
+                lastId = local[0].id;
             }
 
-            filtered.forEach(eq => {
+            local.forEach(eq => {
                 const [lon, lat] = eq.geometry.coordinates;
                 const { mag, place, time } = eq.properties;
-                const r = getRadii(mag);
-                const isMajor = mag >= 5.0;
+                const zones = calcImpact(mag);
+                const isCrit = mag >= 5.0;
 
-                L.circle([lat, lon], { radius: r.green, color: 'var(--safe)', weight: 1, fillOpacity: 0.05 }).addTo(layerGroup);
-                L.circle([lat, lon], { radius: r.yellow, color: 'var(--warning)', weight: 1, fillOpacity: 0.1 }).addTo(layerGroup);
-                L.circle([lat, lon], { radius: r.red, color: 'var(--danger)', weight: 1.5, fillOpacity: 0.2 }).addTo(layerGroup);
-                L.circleMarker([lat, lon], { radius: isMajor ? 12 : 8, color: '#fff', fillColor: 'var(--danger)', fillOpacity: 1, weight: 3 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.green, color: 'var(--safe)', weight: 1, fillOpacity: 0.05 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.yellow, color: 'var(--warning)', weight: 1, fillOpacity: 0.1 }).addTo(layerGroup);
+                L.circle([lat, lon], { radius: zones.red, color: 'var(--danger)', weight: 1.5, fillOpacity: 0.2 }).addTo(layerGroup);
+                L.circleMarker([lat, lon], { radius: 10, color: '#fff', fillColor: isCrit ? 'var(--danger)' : 'var(--accent)', fillOpacity: 1, weight: 3 }).addTo(layerGroup);
 
-                feed.innerHTML += `
-                    <div class="eq-card" onclick="map.flyTo([${lat}, ${lon}], 9); sheet.style.transform='translateY(75vh)'">
-                        <div class="mag-view" style="${isMajor ? 'border-color:var(--danger); color:var(--danger); box-shadow:0 0 15px var(--danger);' : ''}">${mag.toFixed(1)}</div>
+                stream.innerHTML += `
+                    <div class="event-card" onclick="map.flyTo([${lat}, ${lon}], 9); sheet.style.transform='translateY(80vh)'">
+                        <div class="mag-orbit" style="border-color:${isCrit ? 'var(--danger)' : 'var(--accent)'}">
+                            <div class="mag-val">${mag.toFixed(1)}</div>
+                            <div class="mag-unit">MAG</div>
+                        </div>
                         <div style="flex:1">
-                            <div style="font-weight:900; font-size:15px;">${place}</div>
-                            <div style="font-size:11px; opacity:0.6; margin-top:2px;">${new Date(time).toLocaleTimeString()}</div>
-                            <div style="display:flex; flex-wrap:wrap;">
-                                <span class="zone-badge" style="color:var(--danger)">🔴 বিপদ: ${Math.round(r.red/1000)}km</span>
-                                <span class="zone-badge" style="color:var(--warning)">🟡 সতর্ক: ${Math.round(r.yellow/1000)}km</span>
-                                <span class="zone-badge" style="color:var(--safe)">🟢 মৃদু: ${Math.round(r.green/1000)}km</span>
+                            <div style="font-weight:800; font-size:16px; letter-spacing:-0.4px;">${place}</div>
+                            <div style="font-size:11px; opacity:0.5; margin-top:3px;">SYNCED: ${new Date(time).toLocaleTimeString()}</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+                                <div class="zone-pill" style="color:var(--danger)">🔴 ${Math.round(zones.red/1000)}km</div>
+                                <div class="zone-pill" style="color:var(--warning)">🟡 ${Math.round(zones.yellow/1000)}km</div>
+                                <div class="zone-pill" style="color:var(--safe)">🟢 ${Math.round(zones.green/1000)}km</div>
                             </div>
                         </div>
                     </div>`;
             });
-        } catch(e) { console.log(e); }
+        } catch(e) { console.log("Stream Offline"); }
     }
 
     setInterval(() => {
         timeLeft--;
-        if(timeLeft < 0) { timeLeft = 10; fetchData(); }
-        document.getElementById('timer-text').innerText = timeLeft + 's';
-        document.getElementById('neon-bar').style.width = (timeLeft * 10) + '%';
+        if(timeLeft < 0) { timeLeft = 10; syncData(); }
+        document.getElementById('timer').innerText = `SYNC: ${timeLeft}S`;
+        document.getElementById('progress').style.width = (100 - (timeLeft * 10)) + '%';
     }, 1000);
 
-    fetchData();
+    syncData();
 </script>
 </body>
 </html>
