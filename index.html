@@ -3,19 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SENTRY INFINITY | Abdullah Al Fahim</title>
+    <title>SENTRY FAHIM | Abdullah Al Fahim</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Plus+Jakarta+Sans:wght@300;500;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --accent: #6366f1; --danger: #ff3366; --warning: #f7b731; --safe: #20bf6b;
             --bg: #020617; --card: rgba(15, 23, 42, 0.8); --border: rgba(255, 255, 255, 0.08);
+            --text: #f8fafc;
+        }
+        /* Light Mode Styles */
+        body.light-mode {
+            --bg: #f1f5f9; --card: rgba(255, 255, 255, 0.8); --border: rgba(0, 0, 0, 0.08);
+            --text: #020617;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; overflow: hidden; transition: background 0.3s; }
 
         #map { height: 100vh; width: 100%; position: absolute; z-index: 1; filter: contrast(1.1) brightness(0.8) saturate(1.2); }
+        body.light-mode #map { filter: none; }
 
         /* Floating Top HUD */
         .hud-top {
@@ -34,8 +41,9 @@
             background: linear-gradient(180deg, rgba(10, 15, 30, 0.98) 0%, #020617 100%);
             backdrop-filter: blur(40px); border-radius: 40px 40px 0 0; z-index: 1500;
             border-top: 1px solid var(--border); transform: translateY(80vh);
-            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1), background 0.3s;
         }
+        body.light-mode .shutter-panel { background: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, #e2e8f0 100%); }
         .shutter-panel.open { transform: translateY(10vh); }
 
         .drag-zone { width: 100%; padding: 30px 0 15px; display: flex; flex-direction: column; align-items: center; cursor: grab; }
@@ -50,8 +58,10 @@
             display: flex; gap: 18px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative; overflow: hidden;
         }
+        body.light-mode .event-card { background: rgba(0, 0, 0, 0.03); }
         .event-card::after { content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: var(--accent); opacity: 0; transition: 0.3s; }
         .event-card:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.06); }
+        body.light-mode .event-card:active { background: rgba(0, 0, 0, 0.06); }
         .event-card:active::after { opacity: 1; }
 
         .mag-orbit {
@@ -60,11 +70,13 @@
             background: #000; border: 2.5px solid var(--accent);
             box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
         }
+        body.light-mode .mag-orbit { background: #fff; }
         .mag-val { font-family: 'Syncopate', sans-serif; font-size: 20px; font-weight: 700; }
         .mag-unit { font-size: 8px; font-weight: 800; opacity: 0.6; margin-top: -2px; }
 
         /* Danger Zone Badges */
         .zone-pill { font-size: 10px; font-weight: 800; padding: 6px 12px; border-radius: 12px; background: rgba(0,0,0,0.3); display: flex; align-items: center; gap: 6px; }
+        body.light-mode .zone-pill { background: rgba(0,0,0,0.05); }
 
         /* Real-time Alert Notification */
         .master-alert {
@@ -78,11 +90,22 @@
 
         .identity { text-align: center; margin-bottom: 30px; }
         .identity h3 { font-size: 9px; letter-spacing: 5px; opacity: 0.4; text-transform: uppercase; margin-bottom: 6px; }
-        .identity h2 { font-family: 'Syncopate', sans-serif; font-size: 18px; font-weight: 700; color: #fff; text-shadow: 0 0 15px rgba(255,255,255,0.2); }
+        .identity h2 { font-family: 'Syncopate', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); text-shadow: 0 0 15px rgba(255,255,255,0.2); }
+        body.light-mode .identity h2 { text-shadow: none; }
 
         .action-node { background: var(--accent); color: white; border: none; padding: 20px; border-radius: 24px; font-weight: 800; width: 100%; margin-bottom: 25px; cursor: pointer; letter-spacing: 1px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3); }
         
         .sync-bar { position: absolute; top: 0; left: 0; height: 3px; background: var(--accent); width: 0%; transition: width 1s linear; }
+
+        /* Toggle Button */
+        .mode-toggle {
+            background: var(--card); border: 1px solid var(--border); color: var(--text);
+            padding: 8px 12px; border-radius: 12px; cursor: pointer; font-size: 12px;
+        }
+        /* Tabs */
+        .tab-container { display: flex; justify-content: space-around; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .tab-btn { background: none; border: none; color: var(--text); padding: 10px; opacity: 0.5; font-family: 'Plus Jakarta Sans'; font-weight: 700; cursor: pointer; }
+        .tab-btn.active { opacity: 1; border-bottom: 2px solid var(--accent); }
     </style>
 </head>
 <body>
@@ -90,8 +113,9 @@
 <div id="map"></div>
 
 <div class="hud-top">
-    <div class="os-logo">SENTRY INFINITY</div>
+    <div class="os-logo">SENTRY FAHIM</div>
     <div style="display:flex; align-items:center; gap:15px;">
+        <button class="mode-toggle" onclick="toggleMode()">🌓</button>
         <div id="timer" style="font-family:'Syncopate'; font-size:10px; color:var(--safe);">SYNC: 10S</div>
         <div style="width:10px; height:10px; background:var(--safe); border-radius:50%; box-shadow:0 0 10px var(--safe); animation: pulse 2s infinite;"></div>
     </div>
@@ -119,18 +143,79 @@
 
         <button onclick="unlockSystem()" id="boot" class="action-node">ENABLE SENSOR INTERFACE</button>
 
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('live')">LIVE (24H)</button>
+            <button class="tab-btn" onclick="switchTab('past')">PAST 30D</button>
+        </div>
+
         <div id="live-stream"></div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.8, 90.3], 6);
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([23.8, 90.3], 7);
     let layerGroup = L.layerGroup().addTo(map);
+    let faultGroup = L.layerGroup().addTo(map);
     let lastId = null, timeLeft = 10, isLive = false;
+    let currentTab = 'live';
+    let allData = [];
 
-    // Premium CartoDB Dark Matter
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+    // Map Tiles
+    const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+    // Bengali Light Tile Layer
+    const lightTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap Bengali'
+    });
+    
+    darkTile.addTo(map);
+
+    // --- Enhanced Fault Lines Logic (GSB Indicative Data) ---
+    function addFaultLines() {
+        faultGroup.clearLayers();
+        const faults = [
+            { name: 'Dauki Fault', path: [[25.10, 90.00], [25.15, 91.50], [25.10, 92.50]], danger: 9.5 },
+            { name: 'Madhupur Fault', path: [[23.70, 90.00], [24.10, 90.10], [24.60, 90.25]], danger: 7.5 },
+            { name: 'Sylhet Fault', path: [[24.50, 91.30], [24.80, 91.80], [25.10, 92.00]], danger: 8.0 },
+            { name: 'Arakan-Yoma Fold Belt', path: [[20.00, 92.30], [21.50, 93.00], [23.00, 93.80], [24.50, 94.50]], danger: 9.0 },
+            { name: 'Plate Boundary', path: [[20.00, 91.00], [22.00, 92.00], [25.00, 93.00], [27.00, 95.00]], danger: 10 }
+        ];
+
+        faults.forEach(f => {
+            L.polyline(f.path, {
+                color: f.danger > 9 ? '#ff0000' : '#ff9900',
+                weight: f.danger * 1.5,
+                opacity: 0.2,
+                smoothFactor: 1
+            }).addTo(faultGroup);
+            
+            L.polyline(f.path, {
+                color: f.danger > 9 ? '#ff5555' : '#ffcc00',
+                weight: f.danger / 2,
+                opacity: 0.8,
+                dashArray: f.danger > 8 ? null : '5, 5'
+            }).addTo(faultGroup);
+        });
+    }
+    addFaultLines();
+
+    function toggleMode() {
+        document.body.classList.toggle('light-mode');
+        if(document.body.classList.contains('light-mode')) {
+            map.removeLayer(darkTile);
+            lightTile.addTo(map);
+        } else {
+            map.removeLayer(lightTile);
+            darkTile.addTo(map);
+        }
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        renderData();
+    }
 
     const siren = new Audio('https://actions.google.com/sounds/v1/alarms/emergency_it_is_an_emergency.ogg');
 
@@ -175,56 +260,102 @@
         const pop = document.getElementById('alert-pop');
         document.getElementById('alert-info').innerText = `${m} Magnitude • ${p}`;
         pop.classList.add('active');
-        if(isLive && m >= 4.5) { siren.currentTime = 0; siren.play(); }
-        if(navigator.vibrate) navigator.vibrate([500, 100, 500]);
+        
+        if(isLive && m >= 2.0) { 
+            siren.currentTime = 0; 
+            siren.play(); 
+            
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]); 
+            
+            if(Notification.permission === 'granted') {
+                new Notification('⚠️ ভূমিকম্প সতর্কতা!', {
+                    body: `${m} মাত্রার ভূমিকম্প হয়েছে: ${p}`,
+                    icon: 'https://cdn-icons-png.flaticon.com/512/3588/3588523.png'
+                });
+            }
+        }
+        
         setTimeout(() => pop.classList.remove('active'), 8000);
     }
 
-    async function syncData() {
-        try {
-            const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson");
-            const data = await res.json();
-            const stream = document.getElementById('live-stream');
-            stream.innerHTML = ""; layerGroup.clearLayers();
-
-            const local = data.features.filter(f => {
-                const [ln, lt] = f.geometry.coordinates;
-                return lt > 15 && lt < 35 && ln > 80 && ln < 100;
-            }).sort((a,b) => b.properties.time - a.properties.time);
-
-            if(local.length > 0 && lastId !== local[0].id) {
-                if(lastId) pushAlert(local[0].properties.mag, local[0].properties.place);
-                lastId = local[0].id;
+    function renderData() {
+        const stream = document.getElementById('live-stream');
+        stream.innerHTML = ""; layerGroup.clearLayers();
+        
+        const now = Date.now();
+        const filteredData = allData.filter(f => {
+            const [ln, lt] = f.geometry.coordinates;
+            const inRegion = lt > 5 && lt < 35 && ln > 70 && ln < 105;
+            if(!inRegion) return false;
+            
+            if(currentTab === 'live') {
+                return (now - f.properties.time) < (24 * 60 * 60 * 1000);
             }
+            return true;
+        }).sort((a,b) => b.properties.time - a.properties.time);
 
-            local.forEach(eq => {
-                const [lon, lat] = eq.geometry.coordinates;
-                const { mag, place, time } = eq.properties;
-                const zones = calcImpact(mag);
-                const isCrit = mag >= 5.0;
+        if(currentTab === 'live' && filteredData.length > 0 && lastId !== filteredData[0].id) {
+            if(lastId) pushAlert(filteredData[0].properties.mag, filteredData[0].properties.place);
+            lastId = filteredData[0].id;
+        }
 
+        filteredData.forEach(eq => {
+            const [lon, lat] = eq.geometry.coordinates;
+            const { mag, place, time } = eq.properties;
+            const zones = calcImpact(mag);
+            const isCrit = mag >= 5.0;
+
+            if(currentTab === 'live') {
+                // Live View: Classic Impact Zones
                 L.circle([lat, lon], { radius: zones.green, color: 'var(--safe)', weight: 1, fillOpacity: 0.05 }).addTo(layerGroup);
                 L.circle([lat, lon], { radius: zones.yellow, color: 'var(--warning)', weight: 1, fillOpacity: 0.1 }).addTo(layerGroup);
                 L.circle([lat, lon], { radius: zones.red, color: 'var(--danger)', weight: 1.5, fillOpacity: 0.2 }).addTo(layerGroup);
                 L.circleMarker([lat, lon], { radius: 10, color: '#fff', fillColor: isCrit ? 'var(--danger)' : 'var(--accent)', fillOpacity: 1, weight: 3 }).addTo(layerGroup);
+            } else {
+                // Past Records: Updated Simple Design
+                const color = isCrit ? 'var(--danger)' : 'var(--accent)';
+                L.circleMarker([lat, lon], {
+                    radius: 4 + (mag * 1.5),
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.6,
+                    weight: 1
+                }).addTo(layerGroup);
+                
+                L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: 'mag-label',
+                        html: `<div style="font-size:10px; font-weight:bold; color:white; text-shadow: 0 0 3px black;">${mag.toFixed(1)}</div>`,
+                        iconSize: [20, 20]
+                    })
+                }).addTo(layerGroup);
+            }
 
-                stream.innerHTML += `
-                    <div class="event-card" onclick="map.flyTo([${lat}, ${lon}], 9); sheet.style.transform='translateY(80vh)'">
-                        <div class="mag-orbit" style="border-color:${isCrit ? 'var(--danger)' : 'var(--accent)'}">
-                            <div class="mag-val">${mag.toFixed(1)}</div>
-                            <div class="mag-unit">MAG</div>
+            stream.innerHTML += `
+                <div class="event-card" onclick="map.flyTo([${lat}, ${lon}], 9); sheet.style.transform='translateY(80vh)'">
+                    <div class="mag-orbit" style="border-color:${isCrit ? 'var(--danger)' : 'var(--accent)'}">
+                        <div class="mag-val">${mag.toFixed(1)}</div>
+                        <div class="mag-unit">MAG</div>
+                    </div>
+                    <div style="flex:1">
+                        <div style="font-weight:800; font-size:16px; letter-spacing:-0.4px;">${place}</div>
+                        <div style="font-size:11px; opacity:0.5; margin-top:3px;">${new Date(time).toLocaleString()}</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+                            <div class="zone-pill" style="color:var(--danger)">🔴 ${Math.round(zones.red/1000)}km</div>
+                            <div class="zone-pill" style="color:var(--warning)">🟡 ${Math.round(zones.yellow/1000)}km</div>
+                            <div class="zone-pill" style="color:var(--safe)">🟢 ${Math.round(zones.green/1000)}km</div>
                         </div>
-                        <div style="flex:1">
-                            <div style="font-weight:800; font-size:16px; letter-spacing:-0.4px;">${place}</div>
-                            <div style="font-size:11px; opacity:0.5; margin-top:3px;">SYNCED: ${new Date(time).toLocaleTimeString()}</div>
-                            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-                                <div class="zone-pill" style="color:var(--danger)">🔴 ${Math.round(zones.red/1000)}km</div>
-                                <div class="zone-pill" style="color:var(--warning)">🟡 ${Math.round(zones.yellow/1000)}km</div>
-                                <div class="zone-pill" style="color:var(--safe)">🟢 ${Math.round(zones.green/1000)}km</div>
-                            </div>
-                        </div>
-                    </div>`;
-            });
+                    </div>
+                </div>`;
+        });
+    }
+
+    async function syncData() {
+        try {
+            const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_month.geojson");
+            const data = await res.json();
+            allData = data.features;
+            renderData();
         } catch(e) { console.log("Stream Offline"); }
     }
 
@@ -239,3 +370,4 @@
 </script>
 </body>
 </html>
+
